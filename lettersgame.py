@@ -21,12 +21,14 @@ import os
 
 import numpy as np
 import nltk
+from nltk.corpus import wordnet
+nltk.download('wordnet')
 
 from letterdeck import LetterDeck
 
 class LettersGame:
     def __init__(self, dictionary=None, letters=None, timer=45,
-                    min_word_length=5):
+                    min_word_length=4, auto_pick=False):
         """Letters game class for the Countdown game.
 
         TODO: if letters is none, generate
@@ -34,9 +36,52 @@ class LettersGame:
         self.min_word_length = min_word_length
         self.dictionary = dictionary
         self.rng = np.random.default_rng()
-        self.letters = letters if (letters is not None
-                      ) else self.generate_letters(letters=True)[0]
+
+        if letters is not None:
+            self.letters = letters
+        elif auto_pick:
+            self.letters = self.generate_letter_set()
+        else:
+            # This means this will be filled by a human via keyboard input
+            self.letters = []
+
         self.timer = timer
+        self.deck = LetterDeck(power=0.5)
+
+    def pick_letters(self):
+        counts = {}
+        chosen_letters = []
+        target_count = 9
+
+        print("Welcome to the Countdown Letter Picker!")
+        print("You will choose 9 letters by specifying 'vowel' or 'consonant' each time.")
+        print("Note: No letter can appear more than twice.\n")
+
+        while len(chosen_letters) < target_count:
+            print("Current letters:", " ".join(chosen_letters))
+            choice = input("Choose (v)owel or (c)onsonant: ").strip().lower()
+
+            # Validate the input
+            if choice not in ("v", "c"):
+                print("Invalid input. Please type 'v' for vowel or 'c' for consonant.\n")
+                continue
+
+            try:
+                if choice == "v":
+                    letter = self.deck.pick_vowel(counts)
+                else:  # choice == "c"
+                    letter = self.deck.pick_consonant(counts)
+                chosen_letters.append(letter)
+                counts[letter] = counts.get(letter, 0) + 1
+                print(f"You picked: {letter}\n")
+            except ValueError as e:
+                print("Error:", e)
+                continue
+
+        print("Final set of letters:", " ".join(chosen_letters))
+        # Controversial move here:
+        self.letters = chosen_letters
+        return chosen_letters
 
     def generate_letters(self, letters=True):
         """Generate letters for the game.
@@ -94,18 +139,7 @@ class LettersGame:
         """Validate if the word exists in the provided dictionary."""
         return word.upper() in self.dictionary
 
-    def generate_human_guesses(self, skill_level=0.5,
-                                    percentile_range=0.2):
-        """Generate a single word guess based on skill level.
-
-        Args:
-            skill_level (float): 0-1, determines word length percentile target
-            min_letters (int): Minimum word length to consider
-            percentile_range (float): Range around skill level for randomization
-
-        Returns:
-            str: A single word guess
-        """
+    def get_valid_words(self, sort_by=None):
         try:
             nltk.data.find('corpora/words')
         except LookupError:
@@ -127,11 +161,24 @@ class LettersGame:
                 if can_make:
                     possible_words.append(word)
 
-        if not possible_words:
-            return ""
+        if sort_by == "length":
+            possible_words.sort(key=len, reverse=True)
 
-        # Sort by length for skill-based selection
-        possible_words.sort(key=len, reverse=True)
+        return possible_words
+
+    def generate_human_guess(self, skill_level=0.5,
+                                    percentile_range=0.2):
+        """Generate a single word guess based on skill level.
+
+        Args:
+            skill_level (float): 0-1, determines word length percentile target
+            min_letters (int): Minimum word length to consider
+            percentile_range (float): Range around skill level for randomization
+
+        Returns:
+            str: A single word guess
+        """
+        possible_words = self.get_valid_words(sort_by="length")
 
         # Calculate range bounds
         min_percentile = max(0.0, skill_level - percentile_range/2)
@@ -146,6 +193,43 @@ class LettersGame:
         # TODO: find optimal word to show as "dictionary corner" best answer.
 
         return possible_words[index]
+
+    def dictionary_corner(self):
+        """Generate the best possible word from the letters.
+
+        TODO: it would be cool to have the word's meaning
+        print(word.definition()), apparently.
+        """
+        # Find possible words from the self.letters
+        # Sort by length
+        possible_words = self.get_valid_words(sort_by="length")
+
+        # Max length word
+        max_len = len(possible_words[0])
+
+        # How many had that length?
+        max_len_count = sum(len(word) == max_len for word in possible_words)
+
+        print(f"The longest word possible is {max_len} letters long.")
+        print(f"There are {max_len_count} words of that length.")
+        print(f"The longest word is: {possible_words[0]}.")
+        print(f"This word means: {self.get_word_definition(possible_words[0])}.")
+
+        print("The second and third longest words are:")
+        print(f"2. {possible_words[1]}, meaning: {self.get_word_definition(possible_words[1])}")
+        print(f"3. {possible_words[2]}, meaning: {self.get_word_definition(possible_words[2])}")
+
+        # return possible_words[0]
+        return
+
+    @staticmethod
+    def get_word_definition(word):
+        syns = wordnet.synsets(word)
+        try:
+            definition = syns[0].definition()
+        except IndexError:
+            definition = "...actually, no definition found."
+        return definition
 
     @staticmethod
     def determine_point_dividend(player1, player2):
@@ -178,15 +262,24 @@ class LettersGame:
 
 
 if __name__ == "__main__":
-    LG = LettersGame()
+    LG = LettersGame(auto_pick=True)
 
     print("Starting new game with AI players...")
     print(f"Letters generated: {' '.join(LG.letters)}")
 
+    print("Start timer")
+    # TODO - add timer functionality as function, 45 sec usually
+
     print(f"First player guess: {(player1_guess := 
-                    LG.generate_human_guesses(skill_level=0.4))}")
+                    LG.generate_human_guess(skill_level=0.55))}")
+    print("This word means:", LG.get_word_definition(player1_guess))
     print(f"Second player guess: {(player2_guess := 
-                    LG.generate_human_guesses(skill_level=0.9))}")
+                    LG.generate_human_guess(skill_level=0.92))}")
+    print("This word means:", LG.get_word_definition(player2_guess))
+
+    LG.dictionary_corner()
 
     scores = LG.determine_point_dividend(player1_guess, player2_guess)
     print(f"Player 1 score: {scores[0]}    Player 2 score: {scores[1]}")
+
+

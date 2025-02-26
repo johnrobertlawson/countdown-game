@@ -7,28 +7,23 @@ import time
 import numpy as np
 
 class NumbersGame:
-    def __init__(self, numbers=None, target=None, timer=45):
+    def __init__(self, numbers=None, target=None, timer=45, auto_pick=False):
         """Numbers game class for the Countdown game.
 
         TODO: if numbers or target is none, generate
         """
         self.rng = np.random.default_rng()  # Create RNG instance
-        self.numbers = numbers if (numbers is not None
-                        ) else self.generate_numbers(target=False)
-        self.target = target if (target is not None
-                        ) else self.generate_numbers(numbers=False)
         self.timer = timer
 
-    def generate_numbers(self, target=True, numbers=True):
-        """Generate numbers and target for the game.
+        if numbers is not None:
+            self.numbers = numbers
+        else:
+            if auto_pick:
+                self.numbers = self.generate_number_set()
+            else:
+                self.numbers = []
 
-        Args:
-            target (bool): Generate target number
-            numbers (bool): Generate number set
-        """
-        target_val = self.generate_target() if target else None
-        numbers_val = self.generate_number_set() if numbers else None
-        return numbers_val, target_val
+        self.target = target if target is not None else self.generate_target()
 
     def generate_target(self):
         """Generate a target number between 100 and 999."""
@@ -53,8 +48,13 @@ class NumbersGame:
             ('/', lambda x, y: x // y if y != 0 and x % y == 0 else None, "Divide")
         ]
 
-    def solve_numbers(self):
-        """Find a sequence of operations that uses the numbers to reach the target."""
+    def solve_numbers(self, explain=True):
+        """Find a sequence of operations that uses the numbers to reach the target.
+
+        I think it's being too complicated.
+        It should rank solutions by simplicity.
+        Maybe sample a subset of solutions if too long to run permutations.
+        """
         def helper(current_numbers, steps):
             if self.target in current_numbers:
                 return steps
@@ -86,10 +86,19 @@ class NumbersGame:
                                 return solution
             return None
 
-        return helper(self.numbers, [])
+        solution = helper(self.numbers, [])
 
-    def start_round(self):
-        self.numbers, self.target = self.generate_numbers()
+        if (solution is not None) and explain:
+            print("Solution found by Genius Robot:")
+            for idx, step in enumerate(solution, start=1):
+                print(f"Step {idx}:")
+                print(f"  Expression: {step['expression']}")
+                print(f"  Description: {step['description']}")
+                print(f"  Available Numbers: {[int(num) for num in step['available_numbers']]}\n")
+        else:
+            print("No solution found.")
+
+        return solution
 
     def check_solution(self, expression):
         # Evaluate the expression safely and check if it equals target
@@ -103,42 +112,64 @@ class NumbersGame:
         except Exception as e:
             return False, f"Error in expression: {e}"
 
-    def provide_solution(self):
-        return self.solve_numbers()
-
     def lookup_points_awarded(self, answer):
         """Lookup points awarded based on distance from target.
         """
-        distance = abs(answer - self.target)
-        if distance == 0:
-            return 10
-        elif distance <= 5:
-            return 7
+        distance = int(abs(answer - self.target))
+        if distance <= 5:
+            return 10 - distance
         elif distance <= 10:
-            return 5
+            return 4
         elif distance <= 20:
-            return 3
+            return 2
         else:
             return 0
+
+    def generate_human_guess(self, skill_level=0.5):
+        """Generate a value mimicking human guess based on skill level.
+
+        We assume the method is correct, for now, for simplicity.
+
+        Returns:
+            int: The guess value.
+        """
+        if skill_level < 0 or skill_level > 1:
+            raise ValueError("Skill level must be between 0 and 1.")
+
+        # Randomly decide if the player will be within 10 of the target
+        close_guess = self.rng.random() < skill_level
+        if close_guess:
+            deviation = int(round(self.rng.normal(0, 2)))
+            return self.target + deviation
+        else:
+            return self.rng.integers(1, 101)
+
 
 
 # -------------------------
 # Testing the solve_numbers function
 # -------------------------
 if __name__ == "__main__":
-    NG = NumbersGame()
+    NG = NumbersGame(auto_pick=True)
 
-    # Player give their methods...
+    print(f"The chosen numbers are: {NG.numbers}")
+    print(f"The target is: {NG.target}.")
+
+
+    # Player give their numbers
+    # Assume methods are correct for now
+    answer1 = NG.generate_human_guess(skill_level=0.5)
+    print(f"Player 1's answer: {answer1}")
+    answer2 = NG.generate_human_guess(skill_level=0.92)
+    print(f"Player 2's answer: {answer2}")
 
     # "Genius Robot" looking for optimal answer
-    solution_steps = NG.solve_numbers()
+    NG.solve_numbers(explain=True)
 
-    if solution_steps:
-        print("Solution found:")
-        for idx, step in enumerate(solution_steps, start=1):
-            print(f"Step {idx}:")
-            print(f"  Expression: {step['expression']}")
-            print(f"  Description: {step['description']}")
-            print(f"  Available Numbers: {step['available_numbers']}\n")
-    else:
-        print("No solution found.")
+
+
+    # Give the scores
+    score1 = NG.lookup_points_awarded(answer1)
+    score2 = NG.lookup_points_awarded(answer2)
+    print(f"Player 1 scored {score1} points.")
+    print(f"Player 2 scored {score2} points.")

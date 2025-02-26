@@ -7,6 +7,7 @@ import nltk
 # from nltk.corpus import words
 
 from utils import scramble_word
+from lettersgame import LettersGame
 
 class ConundrumGame:
     def __init__(self, word_list=None, original_word=None, timer=45,
@@ -33,14 +34,6 @@ class ConundrumGame:
         self.scrambled_word = scramble_word(self.original_word)
         self.timer = timer  # seconds
 
-    def start_round(self):
-        self.original_word = self.rng.choice(self.word_list).upper()
-        self.scrambled = scramble_word(self.original_word)
-
-        # Ensure scrambled is not the same as the original
-        while self.scrambled == self.original_word:
-            self.scrambled = scramble_word(self.original_word)
-
     def check_answer(self, answer):
         if answer.upper() == self.original_word:
             return True, "Correct!"
@@ -60,9 +53,7 @@ class ConundrumGame:
 # A quick test
 if __name__ == "__main__":
     game = ConundrumGame()
-    game.start_round()
-    print(f"Original: {game.original_word}")
     print(f"Scrambled: {game.scrambled_word}")
-
-    # This just tests basic check
-    print(game.check_answer(game.original_word))
+    print(f"Original: {game.original_word}")
+    print(game.check_answer(game.original_word)[1])
+    print("This word means:", LettersGame.get_word_definition(game.original_word))

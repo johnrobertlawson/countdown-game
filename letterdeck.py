@@ -1,6 +1,8 @@
 
 import random
 
+
+
 class LetterDeck:
     # Original relative frequencies (proportions) for the letters.
     LETTER_FREQUENCIES = {
@@ -13,6 +15,7 @@ class LetterDeck:
         'Y': 0.018, 'Z': 0.00257
     }
     VOWELS = set("AEIOU")
+    CONSONANTS = set("BCDFGHJKLMNPQRSTVWXYZ")
 
     def __init__(self, power=0.5):
         """
@@ -26,9 +29,12 @@ class LetterDeck:
         self.normalized_frequencies = self._normalize_frequencies(self.adjusted_frequencies)
         # Split into vowels and consonants:
         vowel_freq = {letter: freq for letter, freq in self.adjusted_frequencies.items() if letter in self.VOWELS}
-        consonant_freq = {letter: freq for letter, freq in self.adjusted_frequencies.items() if letter not in self.VOWELS}
+        consonant_freq = {letter: freq for letter, freq in self.adjusted_frequencies.items() if letter in self.CONSONANTS}
         self.normalized_vowel = self._normalize_frequencies(vowel_freq)
         self.normalized_consonant = self._normalize_frequencies(consonant_freq)
+
+
+
 
     def _adjust_frequencies(self, power):
         """Flatten the distribution using a power transformation."""
@@ -107,35 +113,4 @@ class LetterDeck:
         random.shuffle(letters)
         return letters
 
-if __name__ == "__main__":
-    deck = LetterDeck(power=0.5)
-    counts = {}
-    chosen_letters = []
-    target_count = 9
-
-    print("Welcome to the Countdown Letter Picker!")
-    print("You will choose 9 letters by specifying 'vowel' or 'consonant' each time.")
-    print("Note: No letter can appear more than twice.\n")
-
-    while len(chosen_letters) < target_count:
-        print("Current letters:", " ".join(chosen_letters))
-        choice = input("Choose (v)owel or (c)onsonant: ").strip().lower()
-
-        # Validate the input
-        if choice not in ("v", "c"):
-            print("Invalid input. Please type 'v' for vowel or 'c' for consonant.\n")
-            continue
-
-        try:
-            if choice == "v":
-                letter = deck.pick_vowel(counts)
-            else:  # choice == "c"
-                letter = deck.pick_consonant(counts)
-            chosen_letters.append(letter)
-            counts[letter] = counts.get(letter, 0) + 1
-            print(f"You picked: {letter}\n")
-        except ValueError as e:
-            print("Error:", e)
-            continue
-
-    print("Final set of letters:", " ".join(chosen_letters))
+# if __name__ == "__main__":

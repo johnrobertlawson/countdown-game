@@ -63,7 +63,7 @@ def run_cli_version():
     LG4 = LettersGame()
 
     ### Game 6 - NUMBERS GAME, PLAYER 2
-    NG2 =
+    NG2 = NumbersGame()
 
 
 def main():

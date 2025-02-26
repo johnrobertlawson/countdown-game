@@ -167,7 +167,6 @@ if __name__ == "__main__":
     NG.solve_numbers(explain=True)
 
 
-
     # Give the scores
     score1 = NG.lookup_points_awarded(answer1)
     score2 = NG.lookup_points_awarded(answer2)

@@ -262,7 +262,9 @@ class LettersGame:
 
 
 if __name__ == "__main__":
-    LG = LettersGame(auto_pick=True)
+    # LG = LettersGame(auto_pick=True)
+    LG = LettersGame()
+    letters = LG.pick_letters()
 
     print("Starting new game with AI players...")
     print(f"Letters generated: {' '.join(LG.letters)}")
